@@ -1,0 +1,52 @@
+INVESTMENT REPORT — {{ date }}
+{{ "=" * 50 }}
+
+MARKET SUMMARY
+{{ "-" * 14 }}
+{{ market_summary }}
+
+{{ "=" * 50 }}
+TICKER ANALYSIS
+{{ "=" * 50 }}
+{% for rec in recommendations %}
+{{ rec.ticker }} — {{ rec.signal.value }}
+{{ "-" * 30 }}
+Combined Score:      {{ "%.3f" | format(rec.combined_score) }}
+Sentiment:           {{ "%.3f" | format(rec.sentiment_score) }}
+ML Up Probability:   {{ "%.1f" | format(rec.ml_up_probability * 100) }}%
+Model Confidence:    {{ "%.1f" | format(rec.confidence * 100) }}%
+Current Price:       ${{ "%.2f" | format(rec.current_price) }} ({{ "%+.2f" | format(rec.price_change_pct) }}%)
+{% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %}
+Analyst Consensus:   {{ rec.analyst_data.consensus }} — ${{ "%.2f" | format(rec.analyst_data.price_target) }} avg ({{ rec.analyst_data.analyst_count }} analysts, {{ rec.analyst_data.source }})
+{% else %}
+Analyst Consensus:   N/A
+{% endif %}
+{% if rec.ticker_insight %}
+Key Insight: {{ rec.ticker_insight }}
+{% endif %}
+{% if rec.key_news %}
+Key News:
+{% for headline in rec.key_news %}
+  • {{ headline }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{{ "=" * 50 }}
+TOP PICKS TODAY
+{{ "=" * 50 }}
+{% if top_picks %}
+{% for rec in top_picks %}
+{{ loop.index }}. {{ rec.ticker }} — Score: {{ "%.3f" | format(rec.combined_score) }}{% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %} | Analyst: {{ rec.analyst_data.consensus }}{% endif %}
+
+{% endfor %}
+{% else %}
+No tickers met the BUY threshold today.
+{% endif %}
+
+{{ "=" * 50 }}
+NOTES
+{{ "=" * 50 }}
+{{ notes }}
+
+This report is generated automatically. Not financial advice.

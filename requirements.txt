@@ -1,0 +1,16 @@
+anthropic>=0.40.0
+yfinance>=0.2.40
+feedparser>=6.0.0
+torch>=2.0.0
+transformers>=4.40.0
+scikit-learn>=1.5.0
+pandas>=2.2.0
+numpy>=1.26.0
+ta>=0.11.0
+APScheduler>=3.10.4
+python-dotenv>=1.0.0
+loguru>=0.7.2
+jinja2>=3.1.4
+markdown>=3.6
+requests>=2.32.0
+beautifulsoup4>=4.12.0
