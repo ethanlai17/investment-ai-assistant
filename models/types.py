@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+import pandas as pd
+
 
 @dataclass
 class RawNewsItem:
@@ -73,6 +75,62 @@ class Signal(str, Enum):
 
 
 @dataclass
+class FundamentalData:
+    ticker: str
+    pe_ratio: float | None
+    pb_ratio: float | None
+    roe: float | None
+    roa: float | None
+    earnings_growth: float | None
+    revenue_growth: float | None
+    fcf_yield: float | None
+    debt_to_equity: float | None
+    current_ratio: float | None
+    operating_margin: float | None
+    market_cap: float | None
+
+
+@dataclass
+class MacroData:
+    spy_returns: pd.Series
+    vix_levels: pd.Series
+    yield_spread: pd.Series
+    current_vix: float
+    current_spread: float
+
+
+@dataclass
+class RegimeState:
+    current_state: str  # "bull" | "bear"
+    regime_score: float  # [0, 1]
+    bull_probability: float
+    vix_signal: float
+    yield_curve_signal: float
+
+
+@dataclass
+class RelativeStrength:
+    ticker: str
+    rs_52w: float
+    rs_26w: float
+    rs_13w: float
+    rs_score: float  # [0, 1]
+    sector: str
+    sector_etf: str
+
+
+@dataclass
+class RiskMetrics:
+    ticker: str
+    sharpe_ratio: float
+    max_drawdown: float
+    beta: float
+    annualised_vol: float
+    risk_score: float  # [0, 1]
+    is_high_risk: bool
+
+
+@dataclass
 class Recommendation:
     ticker: str
     signal: Signal
@@ -87,6 +145,11 @@ class Recommendation:
     ticker_insight: str  # populated later by ReportGenerator
     current_price: float
     price_change_pct: float
+    fundamental_score: float = 0.0
+    regime_score: float = 0.0
+    rs_score: float = 0.0
+    risk_score: float = 0.0
+    risk_metrics: RiskMetrics | None = None
 
 
 @dataclass

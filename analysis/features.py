@@ -9,10 +9,18 @@ _FEATURE_COLS = [
     "rsi_14", "macd_line", "macd_signal", "macd_hist",
     "bb_pct", "volume_ratio", "mom_5", "mom_20",
     "daily_return", "sentiment_score",
+    "fundamental_score", "regime_score", "rs_score", "risk_score",
 ]
 
 
-def compute_features(df: pd.DataFrame, sentiment_score: float) -> pd.DataFrame:
+def compute_features(
+    df: pd.DataFrame,
+    sentiment_score: float,
+    fundamental_score: float = 0.5,
+    regime_score: float = 0.5,
+    rs_score: float = 0.5,
+    risk_score: float = 0.5,
+) -> pd.DataFrame:
     df = df.copy()
     close = df["Close"].squeeze()
     volume = df["Volume"].squeeze()
@@ -38,24 +46,38 @@ def compute_features(df: pd.DataFrame, sentiment_score: float) -> pd.DataFrame:
     df["mom_20"] = close.pct_change(20)
     df["daily_return"] = close.pct_change(1)
     df["sentiment_score"] = sentiment_score
+    df["fundamental_score"] = fundamental_score
+    df["regime_score"] = regime_score
+    df["rs_score"] = rs_score
+    df["risk_score"] = risk_score
 
     return df
 
 
 def build_training_set(
-    df: pd.DataFrame, window_days: int = 60
+    df: pd.DataFrame, window_days: int = 252, forward_days: int = 20
 ) -> tuple[pd.DataFrame, pd.Series]:
-    df = df.tail(window_days + 1).copy()
-    df["next_day_up"] = (df["Close"].squeeze().shift(-1) > df["Close"].squeeze()).astype(int)
-    df = df.dropna(subset=_FEATURE_COLS + ["next_day_up"])
-    # Drop the last row since next_day_up is NaN there
-    df = df.iloc[:-1] if len(df) > 0 else df
+    df = df.tail(window_days + forward_days + 1).copy()
+    close = df["Close"].squeeze()
+    df["target_up"] = (close.shift(-forward_days) > close).astype(int)
+    df = df.dropna(subset=_FEATURE_COLS + ["target_up"])
+    # Drop last forward_days rows (no valid target)
+    df = df.iloc[:-forward_days] if len(df) > forward_days else df
     X = df[_FEATURE_COLS]
-    y = df["next_day_up"]
+    y = df["target_up"]
     return X, y
 
 
-def build_prediction_row(df: pd.DataFrame, sentiment_score: float) -> pd.DataFrame:
-    enriched = compute_features(df, sentiment_score)
+def build_prediction_row(
+    df: pd.DataFrame,
+    sentiment_score: float,
+    fundamental_score: float = 0.5,
+    regime_score: float = 0.5,
+    rs_score: float = 0.5,
+    risk_score: float = 0.5,
+) -> pd.DataFrame:
+    enriched = compute_features(
+        df, sentiment_score, fundamental_score, regime_score, rs_score, risk_score
+    )
     latest = enriched[_FEATURE_COLS].dropna().tail(1)
     return latest
