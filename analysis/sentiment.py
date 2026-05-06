@@ -79,6 +79,7 @@ class SentimentAnalyser:
                     neutral_count=0,
                     negative_count=0,
                     top_headlines=[],
+                    top_news_urls=[],
                 )
                 continue
 
@@ -94,7 +95,9 @@ class SentimentAnalyser:
                 key=lambda x: (x.sentiment.label == "positive", x.sentiment.confidence),
                 reverse=True,
             )
-            top_headlines = [i.news_item.headline for i in sorted_items[:3]]
+            top_items = sorted_items[:3]
+            top_headlines = [i.news_item.headline for i in top_items]
+            top_news_urls = [i.news_item.url for i in top_items]
 
             result[ticker] = TickerSentiment(
                 ticker=ticker,
@@ -105,6 +108,7 @@ class SentimentAnalyser:
                 neutral_count=neu,
                 negative_count=neg,
                 top_headlines=top_headlines,
+                top_news_urls=top_news_urls,
             )
 
         return result

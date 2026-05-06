@@ -121,7 +121,7 @@ class Orchestrator:
             ticker_predictions=ticker_predictions,
             top_picks=top_picks,
             notes=(
-                "Model trained on a 60-day rolling window of OHLCV data. "
+                "Model trained on a 90-day rolling window of OHLCV data. "
                 "Sentiment scored by FinBERT (ProsusAI/finbert, 0.94 F1 on Financial PhraseBank). "
                 "Analyst data sourced from TipRanks where available, yfinance otherwise. "
                 "Predictions are probabilistic — not financial advice."

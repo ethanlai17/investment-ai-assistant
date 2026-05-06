@@ -22,8 +22,8 @@ There is no test suite yet. To validate a module in isolation, import and call i
 from config.settings import Config
 from ingestion.price_fetcher import PriceFetcher
 config = Config.load()
-data = PriceFetcher().fetch(["META"], 30)
-print(data["META"].tail())
+data = PriceFetcher().fetch(["AAPL"], 30)
+print(data["AAPL"].tail())
 ```
 
 ## Architecture
@@ -37,13 +37,13 @@ ingestion/ → processing/ → analysis/ → engine/ → reporting/ → delivery
 ```
 
 1. `ingestion/news_fetcher.py` — Yahoo Finance RSS (feedparser) per ticker, falls back to `yf.Ticker().news`
-2. `ingestion/price_fetcher.py` — `yf.download()` for 90-day OHLCV
+2. `ingestion/price_fetcher.py` — `yf.download()` for 200-day OHLCV
 3. `ingestion/analyst_fetcher.py` — Scrapes TipRanks `__NEXT_DATA__` JSON; falls back to `yf.Ticker().recommendations_summary` + `analyst_price_targets`
 4. `processing/deduplicator.py` — `process()` cleans, deduplicates (SequenceMatcher, threshold 0.85), and maps tickers to `NewsItem` objects
 5. `analysis/sentiment.py` — FinBERT (`ProsusAI/finbert`) loaded once at startup; `score_batch()` runs all items in a single pipeline call; `aggregate_by_ticker()` returns `TickerSentiment` with `avg_score` in `[-1, +1]`
-6. `analysis/predictor.py` — `PricePredictor.predict()` trains a `RandomForestClassifier` fresh on every call using a rolling 60-day window; requires ≥ 30 rows or returns `None`
+6. `analysis/predictor.py` — `PricePredictor.predict()` trains a `RandomForestClassifier` fresh on every call using a rolling 90-day window; requires ≥ 30 rows or returns `None`
 7. `engine/recommender.py` — `recommend()` computes `combined_score`: `0.30×sentiment + 0.50×ML + 0.20×analyst` (when analyst data available), else `0.40×sentiment + 0.60×ML`. BUY ≥ 0.65 & confidence ≥ 0.60; HOLD ≥ 0.45; AVOID otherwise
-8. `reporting/generator.py` — Two Claude calls: **Haiku** (`generate_ticker_insights`) for one-sentence per-ticker rationale (batched, JSON response); **Sonnet** (`generate_market_narrative`) for the 2–4 paragraph summary
+8. `reporting/generator.py` — Two DeepSeek calls via OpenAI-compatible API: **Flash model** (`generate_ticker_insights`) for one-sentence per-ticker rationale (batched, JSON response); **Pro model** (`generate_market_narrative`) for the 2–4 paragraph summary
 9. `reporting/formatter.py` — Jinja2 renders `reporting/templates/report.md.j2` and `report.txt.j2` to `outputs/YYYY-MM-DD.{md,txt}`
 10. `delivery/email_sender.py` — SMTP_SSL port 465; plain text + HTML (converted via `markdown` library)
 
@@ -57,4 +57,4 @@ ingestion/ → processing/ → analysis/ → engine/ → reporting/ → delivery
 
 ## Environment
 
-Copy `.env.example` to `.env`. Required: `ANTHROPIC_API_KEY`, `SMTP_USER`, `SMTP_PASSWORD`. Everything else has defaults. `SMTP_PASSWORD` must be a Gmail App Password (16 chars), not an account password.
+Create `.env` in the project root. Required: `DEEPSEEK_API_KEY`, `SMTP_USER`, `SMTP_PASSWORD`, `TICKERS`. Everything else has defaults. `SMTP_PASSWORD` must be a Gmail App Password (16 chars), not an account password.

@@ -41,7 +41,7 @@ Create a `.env` file in the project root and fill in:
 | `SMTP_USER` | Your Gmail address |
 | `SMTP_PASSWORD` | Gmail App Password (16 chars) — see note below |
 | `RECIPIENT_EMAIL` | Where to send the daily report (defaults to `SMTP_USER`) |
-| `TICKERS` | Comma-separated ticker symbols, e.g. `META,KGC,ORCL,MU` |
+| `TICKERS` | Comma-separated ticker symbols, e.g. `AAPL,MSFT,GOOG` |
 
 **Gmail App Password:** Enable 2FA on your Google account → Security → App passwords → create one for "Mail".
 
@@ -67,7 +67,7 @@ All configuration is via `.env`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TICKERS` | `META,KGC,ORCL,MU` | Tickers to analyse |
+| `TICKERS` | *(required)* | Comma-separated tickers to analyse |
 | `PRICE_LOOKBACK_DAYS` | `200` | Historical OHLCV window (calendar days) |
 | `TRAINING_WINDOW_DAYS` | `90` | Rolling window for RandomForest training |
 | `NEWS_LOOKBACK_DAYS` | `1` | Days of news to fetch |
@@ -117,14 +117,14 @@ TipRanks / yfinance──► AnalystFetcher     │
 [2–4 paragraph narrative from DeepSeek Pro]
 
 ## Ticker Analysis
-### META — BUY
+### TICKER — BUY
 | Metric | Value |
 ...
-Key Insight: [DeepSeek Flash one-liner]
+Key Insight: [DeepSeek Pro one-liner]
 Key News: ...
 
 ## Top Picks Today
-1. META — Score: 0.712
+1. TICKER — Score: 0.712
 
 ## Notes
 [model confidence and limitations]

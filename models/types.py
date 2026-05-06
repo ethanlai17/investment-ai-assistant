@@ -46,6 +46,7 @@ class TickerSentiment:
     neutral_count: int
     negative_count: int
     top_headlines: list[str]  # up to 3
+    top_news_urls: list[str]  # parallel list of URLs
 
 
 @dataclass
@@ -82,7 +83,8 @@ class Recommendation:
     analyst_score: float  # normalised 0–1; 0.0 if no data
     confidence: float
     key_news: list[str]
-    ticker_insight: str  # Claude Haiku one-liner
+    key_news_urls: list[str]
+    ticker_insight: str  # populated later by ReportGenerator
     current_price: float
     price_change_pct: float
 

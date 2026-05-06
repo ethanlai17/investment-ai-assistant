@@ -66,6 +66,7 @@ def recommend(
         analyst_score=round(analyst_score, 4),
         confidence=round(prediction.confidence, 4),
         key_news=sentiment.top_headlines,
+        key_news_urls=sentiment.top_news_urls,
         ticker_insight="",  # populated later by ReportGenerator
         current_price=round(current_price, 2),
         price_change_pct=round(price_change_pct, 2),

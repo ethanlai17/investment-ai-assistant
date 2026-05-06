@@ -51,13 +51,16 @@ class ReportGenerator:
         try:
             response = self._client.chat.completions.create(
                 model=self._flash,
-                max_tokens=1024,
+                max_tokens=4096,
                 temperature=0.3,
-                response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": prompt}],
             )
             text = response.choices[0].message.content or ""
+            # Strip markdown fences, then extract the first {...} block
             text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if match:
+                text = match.group(0)
             try:
                 insights: dict[str, str] = json.loads(text)
             except json.JSONDecodeError:
@@ -98,13 +101,14 @@ class ReportGenerator:
         try:
             response = self._client.chat.completions.create(
                 model=self._pro,
-                max_tokens=600,
+                max_tokens=2048,
                 temperature=0.4,
                 messages=[{"role": "user", "content": prompt}],
             )
-            narrative = response.choices[0].message.content.strip()
+            msg = response.choices[0].message
+            narrative = (msg.content or getattr(msg, "reasoning_content", "") or "").strip()
             logger.debug("Pro market narrative generated")
-            return narrative
+            return narrative or "Market narrative unavailable."
         except Exception as exc:
             logger.warning(f"Pro market narrative failed — {exc}")
             return "Market narrative unavailable."

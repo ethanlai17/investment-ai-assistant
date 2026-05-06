@@ -15,6 +15,7 @@ class ReportFormatter:
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        self._env.filters["zip"] = zip
 
     def render(self, report_data: ReportData) -> tuple[Path, Path]:
         md_content = self._render_template("report.md.j2", report_data)

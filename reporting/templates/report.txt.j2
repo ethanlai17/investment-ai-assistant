@@ -26,8 +26,10 @@ Key Insight: {{ rec.ticker_insight }}
 {% endif %}
 {% if rec.key_news %}
 Key News:
-{% for headline in rec.key_news %}
-  • {{ headline }}
+{% for headline, url in rec.key_news | zip(rec.key_news_urls) %}
+  • {{ headline }}{% if url %}
+    {{ url }}{% endif %}
+
 {% endfor %}
 {% endif %}
 
@@ -48,5 +50,24 @@ No tickers met the BUY threshold today.
 NOTES
 {{ "=" * 50 }}
 {{ notes }}
+
+{{ "=" * 50 }}
+METRIC GUIDE
+{{ "=" * 50 }}
+Combined Score (0–1)
+  Weighted blend of sentiment, ML prediction, and analyst consensus.
+  >= 0.65 BUY  |  0.45–0.64 HOLD  |  < 0.45 AVOID
+
+Sentiment (0–1)
+  FinBERT news sentiment normalised from [-1, +1].
+  > 0.60 bullish  |  0.40–0.60 neutral  |  < 0.40 bearish
+
+ML Up Probability (0–100%)
+  RandomForest probability of a next-day price increase.
+  > 65% or < 35% strong signal  |  35–65% uncertain
+
+Model Confidence (50–100%)
+  Decisiveness of the ML call — distance from a 50/50 split.
+  >= 70% high  |  60–69% moderate  |  < 60% low
 
 This report is generated automatically. Not financial advice.

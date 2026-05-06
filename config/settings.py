@@ -39,7 +39,7 @@ class Config:
 
     @classmethod
     def load(cls) -> "Config":
-        tickers_raw = _optional("TICKERS", "META,KGC,ORCL,IITU,MU")
+        tickers_raw = _optional("TICKERS", "")
         tickers = [t.strip() for t in tickers_raw.split(",") if t.strip()]
         return cls(
             deepseek_api_key=_require("DEEPSEEK_API_KEY"),
@@ -56,7 +56,7 @@ class Config:
             schedule_minute=int(_optional("SCHEDULE_MINUTE", "30")),
             schedule_timezone=_optional("SCHEDULE_TIMEZONE", "Europe/London"),
             log_level=_optional("LOG_LEVEL", "INFO"),
-            flash_model=_optional("FLASH_MODEL", "deepseek-v4-flash"),
+            flash_model=_optional("FLASH_MODEL", "deepseek-v4-pro"),
             pro_model=_optional("PRO_MODEL", "deepseek-v4-pro"),
             outputs_dir=_optional("OUTPUTS_DIR", "outputs"),
             logs_dir=_optional("LOGS_DIR", "logs"),
