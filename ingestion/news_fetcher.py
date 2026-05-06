@@ -8,6 +8,13 @@ from models.types import RawNewsItem
 
 
 _YAHOO_RSS = "http://finance.yahoo.com/rss/headline?s={ticker}"
+_BAD_URL_PATTERNS = ("consent.yahoo.com", "consent.google.com")
+
+
+def _clean_url(url: str) -> str:
+    if not url or any(p in url for p in _BAD_URL_PATTERNS):
+        return ""
+    return url
 
 
 def _parse_published(entry) -> datetime:
@@ -50,7 +57,7 @@ class NewsFetcher:
                     summary=entry.get("summary", entry.get("description", "")),
                     published_at=pub,
                     source=feed.feed.get("title", "Yahoo Finance"),
-                    url=entry.get("link", ""),
+                    url=_clean_url(entry.get("link", "")),
                     raw_tickers=[ticker],
                 ))
             return items
@@ -78,7 +85,7 @@ class NewsFetcher:
 
                 title = content.get("title") or article.get("title", "")
                 summary = content.get("summary") or article.get("summary", "")
-                url = content.get("canonicalUrl", {}).get("url") or article.get("link", "")
+                url = _clean_url(content.get("canonicalUrl", {}).get("url") or article.get("link", ""))
                 provider = content.get("provider", {}).get("displayName") or article.get("publisher", "yfinance")
 
                 items.append(RawNewsItem(

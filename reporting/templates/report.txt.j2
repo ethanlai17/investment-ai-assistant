@@ -27,9 +27,7 @@ Key Insight: {{ rec.ticker_insight }}
 {% if rec.key_news %}
 Key News:
 {% for headline, url in rec.key_news | zip(rec.key_news_urls) %}
-  • {{ headline }}{% if url %}
-    {{ url }}{% endif %}
-
+  • {{ headline }}{{ ("\n    " + url) if url else "" }}
 {% endfor %}
 {% endif %}
 

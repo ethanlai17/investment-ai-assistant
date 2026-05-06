@@ -31,7 +31,7 @@
 {% if rec.key_news %}
 **Key News:**
 {% for headline, url in rec.key_news | zip(rec.key_news_urls) %}
-- {% if url %}[{{ headline }}]({{ url }}){% else %}{{ headline }}{% endif %}
+- {{ ("[%s](%s)" | format(headline, url)) if url else headline }}
 {% endfor %}
 {% endif %}
 
