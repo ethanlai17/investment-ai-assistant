@@ -7,14 +7,10 @@ A production-ready AI-powered daily investment report system for a predefined li
 1. **Ingests** daily financial news from Yahoo Finance RSS (yfinance fallback)
 2. **Fetches** analyst consensus and price targets from TipRanks (yfinance fallback)
 3. **Scores sentiment** using FinBERT — a finance-specific BERT model (0.94 F1 on Financial PhraseBank, free, local)
-4. **Predicts** next-day price direction using a RandomForest trained on 60-day rolling OHLCV + technical indicators
+4. **Predicts** next-day price direction using a RandomForest trained on a 90-day rolling window of OHLCV + technical indicators
 5. **Ranks** tickers with a combined score weighted across sentiment, ML prediction, and analyst consensus
-6. **Generates** a report with per-ticker insights (Claude Haiku) and an overall market narrative (Claude Sonnet)
+6. **Generates** a report with per-ticker insights (DeepSeek Flash) and an overall market narrative (DeepSeek Pro)
 7. **Emails** the report daily at 9:30 AM UK time to your configured address
-
-## Default tickers
-
-`META`, `KGC`, `ORCL`, `IITU`, `MU` — configurable via `.env`
 
 ## Setup
 
@@ -37,19 +33,15 @@ pip install -r requirements.txt
 
 ### 3. Configure environment
 
-```bash
-cp .env.example .env
-```
-
-Edit `.env` and fill in:
+Create a `.env` file in the project root and fill in:
 
 | Variable | Description |
 |----------|-------------|
-| `ANTHROPIC_API_KEY` | From [console.anthropic.com](https://console.anthropic.com) |
+| `DEEPSEEK_API_KEY` | From [platform.deepseek.com](https://platform.deepseek.com) |
 | `SMTP_USER` | Your Gmail address |
 | `SMTP_PASSWORD` | Gmail App Password (16 chars) — see note below |
-| `RECIPIENT_EMAIL` | Where to send the daily report |
-| `TICKERS` | Comma-separated list, e.g. `META,KGC,ORCL,IITU,MU` |
+| `RECIPIENT_EMAIL` | Where to send the daily report (defaults to `SMTP_USER`) |
+| `TICKERS` | Comma-separated ticker symbols, e.g. `META,KGC,ORCL,MU` |
 
 **Gmail App Password:** Enable 2FA on your Google account → Security → App passwords → create one for "Mail".
 
@@ -71,19 +63,19 @@ Runs daily at `SCHEDULE_HOUR:SCHEDULE_MINUTE` in `SCHEDULE_TIMEZONE` (default: 0
 
 ## Configuration reference
 
-All configuration is via `.env`. See `.env.example` for the full list.
+All configuration is via `.env`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TICKERS` | `META,KGC,ORCL,IITU,MU` | Tickers to analyse |
-| `PRICE_LOOKBACK_DAYS` | `90` | Historical OHLCV window |
-| `TRAINING_WINDOW_DAYS` | `60` | Rolling window for RandomForest training |
+| `TICKERS` | `META,KGC,ORCL,MU` | Tickers to analyse |
+| `PRICE_LOOKBACK_DAYS` | `200` | Historical OHLCV window (calendar days) |
+| `TRAINING_WINDOW_DAYS` | `90` | Rolling window for RandomForest training |
 | `NEWS_LOOKBACK_DAYS` | `1` | Days of news to fetch |
 | `SCHEDULE_HOUR` | `9` | Hour to run (24h) |
 | `SCHEDULE_MINUTE` | `30` | Minute to run |
 | `SCHEDULE_TIMEZONE` | `Europe/London` | Any pytz timezone string |
-| `HAIKU_MODEL` | `claude-haiku-4-5-20251001` | Model for per-ticker insights |
-| `SONNET_MODEL` | `claude-sonnet-4-6` | Model for market narrative |
+| `FLASH_MODEL` | `deepseek-v4-flash` | Model for per-ticker insights |
+| `PRO_MODEL` | `deepseek-v4-pro` | Model for market narrative |
 | `LOG_LEVEL` | `INFO` | DEBUG / INFO / WARNING |
 
 ## Architecture
@@ -100,8 +92,8 @@ TipRanks / yfinance──► AnalystFetcher     │
                    RandomForest predict    │ (60-day rolling)
                    Recommender            │ (weighted score)
                                            │
-                   Claude Haiku  ──► per-ticker insights
-                   Claude Sonnet ──► market narrative
+                   DeepSeek Flash ──► per-ticker insights
+                   DeepSeek Pro   ──► market narrative
                                            │
                    Jinja2 templates  ──► .md + .txt report
                    Gmail SMTP_SSL    ──► email delivery
@@ -122,13 +114,13 @@ TipRanks / yfinance──► AnalystFetcher     │
 # Investment Report — YYYY-MM-DD
 
 ## Market Summary
-[2–4 paragraph narrative from Claude Sonnet]
+[2–4 paragraph narrative from DeepSeek Pro]
 
 ## Ticker Analysis
 ### META — BUY
 | Metric | Value |
 ...
-Key Insight: [Claude Haiku one-liner]
+Key Insight: [DeepSeek Flash one-liner]
 Key News: ...
 
 ## Top Picks Today
@@ -144,7 +136,7 @@ Rotating daily logs in `logs/investment_assistant_YYYY-MM-DD.log` (30-day retent
 
 ## Limitations
 
-- RandomForest is trained fresh daily on 60 days of data — performance varies on low-liquidity tickers
+- RandomForest is trained fresh daily on a 90-day rolling window — performance varies on low-liquidity tickers
 - TipRanks scraping may be blocked by Cloudflare; yfinance analyst data is used as fallback
 - FinBERT may not cover non-English news sources
 - Not financial advice
