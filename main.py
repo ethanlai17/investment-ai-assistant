@@ -1,5 +1,7 @@
-import argparse
 import sys
+sys.dont_write_bytecode = True
+
+import argparse
 from pathlib import Path
 
 from apscheduler.schedulers.blocking import BlockingScheduler
