@@ -25,9 +25,9 @@ class Orchestrator:
         self._sentiment = SentimentAnalyser()
         self._predictor = PricePredictor(config.training_window_days)
         self._report_gen = ReportGenerator(
-            haiku_model=config.haiku_model,
-            sonnet_model=config.sonnet_model,
-            api_key=config.anthropic_api_key,
+            flash_model=config.flash_model,
+            pro_model=config.pro_model,
+            api_key=config.deepseek_api_key,
         )
         self._formatter = ReportFormatter(config.outputs_dir)
         self._mailer = EmailSender(

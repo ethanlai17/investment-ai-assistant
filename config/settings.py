@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,7 +18,7 @@ def _optional(key: str, default: str) -> str:
 
 @dataclass
 class Config:
-    anthropic_api_key: str
+    deepseek_api_key: str
     smtp_host: str
     smtp_port: int
     smtp_user: str
@@ -32,8 +32,8 @@ class Config:
     schedule_minute: int
     schedule_timezone: str
     log_level: str
-    haiku_model: str
-    sonnet_model: str
+    flash_model: str
+    pro_model: str
     outputs_dir: str
     logs_dir: str
 
@@ -42,7 +42,7 @@ class Config:
         tickers_raw = _optional("TICKERS", "META,KGC,ORCL,IITU,MU")
         tickers = [t.strip() for t in tickers_raw.split(",") if t.strip()]
         return cls(
-            anthropic_api_key=_require("ANTHROPIC_API_KEY"),
+            deepseek_api_key=_require("DEEPSEEK_API_KEY"),
             smtp_host=_optional("SMTP_HOST", "smtp.gmail.com"),
             smtp_port=int(_optional("SMTP_PORT", "465")),
             smtp_user=_require("SMTP_USER"),
@@ -50,14 +50,14 @@ class Config:
             recipient_email=_optional("RECIPIENT_EMAIL", _require("SMTP_USER")),
             tickers=tickers,
             news_lookback_days=int(_optional("NEWS_LOOKBACK_DAYS", "1")),
-            price_lookback_days=int(_optional("PRICE_LOOKBACK_DAYS", "90")),
-            training_window_days=int(_optional("TRAINING_WINDOW_DAYS", "60")),
+            price_lookback_days=int(_optional("PRICE_LOOKBACK_DAYS", "200")),
+            training_window_days=int(_optional("TRAINING_WINDOW_DAYS", "90")),
             schedule_hour=int(_optional("SCHEDULE_HOUR", "9")),
             schedule_minute=int(_optional("SCHEDULE_MINUTE", "30")),
             schedule_timezone=_optional("SCHEDULE_TIMEZONE", "Europe/London"),
             log_level=_optional("LOG_LEVEL", "INFO"),
-            haiku_model=_optional("HAIKU_MODEL", "claude-haiku-4-5-20251001"),
-            sonnet_model=_optional("SONNET_MODEL", "claude-sonnet-4-6"),
+            flash_model=_optional("FLASH_MODEL", "deepseek-v4-flash"),
+            pro_model=_optional("PRO_MODEL", "deepseek-v4-pro"),
             outputs_dir=_optional("OUTPUTS_DIR", "outputs"),
             logs_dir=_optional("LOGS_DIR", "logs"),
         )

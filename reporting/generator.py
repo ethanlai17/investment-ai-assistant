@@ -1,24 +1,24 @@
+import ast
 import json
+import re
 
-import anthropic
+from openai import OpenAI
 from loguru import logger
 
 from models.types import Recommendation, ReportData
 
+_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+
 
 class ReportGenerator:
-    def __init__(self, haiku_model: str, sonnet_model: str, api_key: str):
-        self._client = anthropic.Anthropic(api_key=api_key)
-        self._haiku = haiku_model
-        self._sonnet = sonnet_model
+    def __init__(self, flash_model: str, pro_model: str, api_key: str):
+        self._client = OpenAI(api_key=api_key, base_url=_DEEPSEEK_BASE_URL)
+        self._flash = flash_model
+        self._pro = pro_model
 
     def generate_ticker_insights(
         self, recommendations: list[Recommendation]
     ) -> dict[str, str]:
-        """
-        Single Claude Haiku call for all tickers.
-        Returns {ticker: one_sentence_insight}.
-        """
         if not recommendations:
             return {}
 
@@ -49,30 +49,26 @@ class ReportGenerator:
         )
 
         try:
-            response = self._client.messages.create(
-                model=self._haiku,
-                max_tokens=512,
+            response = self._client.chat.completions.create(
+                model=self._flash,
+                max_tokens=1024,
                 temperature=0.3,
+                response_format={"type": "json_object"},
                 messages=[{"role": "user", "content": prompt}],
             )
-            text = response.content[0].text.strip()
-            # Strip markdown code fences if present
-            if text.startswith("```"):
-                text = text.split("```")[1]
-                if text.startswith("json"):
-                    text = text[4:]
-            insights: dict[str, str] = json.loads(text)
-            logger.debug(f"Haiku insights generated for {list(insights.keys())}")
+            text = response.choices[0].message.content or ""
+            text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
+            try:
+                insights: dict[str, str] = json.loads(text)
+            except json.JSONDecodeError:
+                insights = ast.literal_eval(text)
+            logger.debug(f"Flash insights generated for {list(insights.keys())}")
             return insights
         except Exception as exc:
-            logger.warning(f"Haiku ticker insights failed — {exc}")
+            logger.warning(f"Flash ticker insights failed — {exc}")
             return {rec.ticker: "" for rec in recommendations}
 
     def generate_market_narrative(self, report_data: ReportData) -> str:
-        """
-        Claude Sonnet call for the overall market narrative.
-        Returns 2–4 paragraphs of market summary.
-        """
         recs_summary = []
         for rec in report_data.recommendations:
             analyst_str = "No analyst data"
@@ -100,15 +96,15 @@ class ReportGenerator:
         )
 
         try:
-            response = self._client.messages.create(
-                model=self._sonnet,
+            response = self._client.chat.completions.create(
+                model=self._pro,
                 max_tokens=600,
                 temperature=0.4,
                 messages=[{"role": "user", "content": prompt}],
             )
-            narrative = response.content[0].text.strip()
-            logger.debug("Sonnet market narrative generated")
+            narrative = response.choices[0].message.content.strip()
+            logger.debug("Pro market narrative generated")
             return narrative
         except Exception as exc:
-            logger.warning(f"Sonnet market narrative failed — {exc}")
+            logger.warning(f"Pro market narrative failed — {exc}")
             return "Market narrative unavailable."
