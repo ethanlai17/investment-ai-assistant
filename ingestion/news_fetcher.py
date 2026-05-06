@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse
 
 import feedparser
 import yfinance as yf
@@ -8,11 +9,17 @@ from models.types import RawNewsItem
 
 
 _YAHOO_RSS = "http://finance.yahoo.com/rss/headline?s={ticker}"
-_BAD_URL_PATTERNS = ("consent.yahoo.com", "consent.google.com")
 
 
 def _clean_url(url: str) -> str:
-    if not url or any(p in url for p in _BAD_URL_PATTERNS):
+    """Return empty string for any yahoo.com URL — they redirect to consent pages from EU/UK IPs."""
+    if not url:
+        return ""
+    try:
+        host = urlparse(url).hostname or ""
+    except Exception:
+        return ""
+    if host == "yahoo.com" or host.endswith(".yahoo.com"):
         return ""
     return url
 
