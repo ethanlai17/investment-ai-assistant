@@ -52,7 +52,24 @@ class Orchestrator:
             recipient_email=config.recipient_email,
         )
 
-    def run_pipeline(self, tickers: list[str] | None = None) -> None:
+    def run_sp500_scan(self) -> None:
+        from ingestion.sp500_screener import SP500Screener
+        logger.info("Starting S&P 500 scan")
+        candidates = SP500Screener().screen(top_n=50)
+        self.run_pipeline(
+            tickers=candidates,
+            top_n_buys=5,
+            report_suffix="-sp500-scan",
+            report_title="S&P 500 Top 5 Picks",
+        )
+
+    def run_pipeline(
+        self,
+        tickers: list[str] | None = None,
+        top_n_buys: int | None = None,
+        report_suffix: str = "",
+        report_title: str = "Investment Report",
+    ) -> None:
         today = date.today().isoformat()
         tickers = tickers or self._config.tickers
         logger.info(f"Pipeline start — {today} — tickers: {tickers}")
@@ -184,6 +201,10 @@ class Orchestrator:
         ranked = rank_recommendations(recommendations)
         top_picks = [r for r in ranked if r.signal.value == "BUY"]
 
+        if top_n_buys is not None:
+            top_picks = sorted(top_picks, key=lambda r: r.combined_score, reverse=True)[:top_n_buys]
+            ranked = list(top_picks)
+
         # Step 15: Generate report narrative
         logger.info("Step 15/16: Generating report content with DeepSeek")
         regime_note = ""
@@ -195,6 +216,11 @@ class Orchestrator:
                 f"yield_spread={macro_data.current_spread:.2f}pp). "  # type: ignore[union-attr]
             )
 
+        scan_note = (
+            f"S&P 500 scan: pre-filtered from 503 constituents via momentum + fundamentals. "
+            f"Top {top_n_buys} BUY signals shown, ranked by combined score. "
+            if top_n_buys is not None else ""
+        )
         report_data = ReportData(
             date=today,
             market_summary="",
@@ -203,7 +229,7 @@ class Orchestrator:
             ticker_predictions=ticker_predictions,
             top_picks=top_picks,
             notes=(
-                f"{regime_note}"
+                f"{scan_note}{regime_note}"
                 "XGBoost trained on 252-day rolling window; target = 20-day forward return. "
                 "Fundamental scoring: Fama-French-style 8-factor cross-sectional rank (value, quality, growth, safety). "
                 "Regime: HMM (2-state) on SPY returns + VIX + yield curve. "
@@ -223,10 +249,13 @@ class Orchestrator:
 
         # Step 16: Format, save, and email
         logger.info("Step 16/16: Formatting report and sending email")
-        md_path, txt_path = self._formatter.render(report_data)
+        md_path, txt_path = self._formatter.render(report_data, suffix=report_suffix, report_title=report_title)
 
+        email_subject = (
+            f"{report_title} — {today}" if report_suffix else None
+        )
         try:
-            self._mailer.send(md_path, txt_path, today)
+            self._mailer.send(md_path, txt_path, today, subject=email_subject)
         except Exception as exc:
             logger.error(f"Email delivery failed — {exc}. Report saved at {md_path}")
 

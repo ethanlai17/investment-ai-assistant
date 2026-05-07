@@ -22,8 +22,8 @@ class EmailSender:
         self._password = smtp_password
         self._recipient = recipient_email
 
-    def send(self, md_path: Path, txt_path: Path, report_date: str) -> None:
-        subject = f"Investment Report — {report_date}"
+    def send(self, md_path: Path, txt_path: Path, report_date: str, subject: str | None = None) -> None:
+        subject = subject or f"Investment Report — {report_date}"
         txt_content = txt_path.read_text(encoding="utf-8")
         md_content = md_path.read_text(encoding="utf-8")
         html_content = self._md_to_html(md_content)

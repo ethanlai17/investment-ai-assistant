@@ -23,6 +23,12 @@ def setup_logging(config: Config) -> None:
     )
 
 
+def run_sp500_scan(config: Config) -> None:
+    from orchestrator import Orchestrator
+    orchestrator = Orchestrator(config)
+    orchestrator.run_sp500_scan()
+
+
 def run_now(config: Config) -> None:
     from orchestrator import Orchestrator
     orchestrator = Orchestrator(config)
@@ -63,6 +69,7 @@ def run_scheduled(config: Config) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="AI Investment Assistant")
     parser.add_argument("--run-now", action="store_true", help="Run pipeline immediately")
+    parser.add_argument("--scan", action="store_true", help="Scan S&P 500 for top 5 BUY signals")
     args = parser.parse_args()
 
     config = Config.load()
@@ -71,5 +78,7 @@ if __name__ == "__main__":
 
     if args.run_now:
         run_now(config)
+    elif args.scan:
+        run_sp500_scan(config)
     else:
         run_scheduled(config)
