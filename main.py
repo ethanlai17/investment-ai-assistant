@@ -27,6 +27,16 @@ def run_now(config: Config) -> None:
     from orchestrator import Orchestrator
     orchestrator = Orchestrator(config)
     orchestrator.run_pipeline()
+    while True:
+        try:
+            answer = input("\nAny other tickers to analyse today? (comma-separated, or Enter to stop): ").strip()
+        except (EOFError, KeyboardInterrupt):
+            break
+        if not answer:
+            break
+        extra = [t.strip().upper() for t in answer.split(",") if t.strip()]
+        if extra:
+            orchestrator.run_pipeline(tickers=extra)
 
 
 def run_scheduled(config: Config) -> None:

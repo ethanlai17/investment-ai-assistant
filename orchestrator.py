@@ -52,9 +52,9 @@ class Orchestrator:
             recipient_email=config.recipient_email,
         )
 
-    def run_pipeline(self) -> None:
+    def run_pipeline(self, tickers: list[str] | None = None) -> None:
         today = date.today().isoformat()
-        tickers = self._config.tickers
+        tickers = tickers or self._config.tickers
         logger.info(f"Pipeline start — {today} — tickers: {tickers}")
 
         # Step 1: Fetch news
