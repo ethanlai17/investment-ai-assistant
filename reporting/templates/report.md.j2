@@ -64,15 +64,15 @@ No tickers met the BUY threshold today.
 
 ## Metric Guide
 
-| Metric | What it measures | Range |
-|--------|-----------------|-------|
-| **Combined Score** | 7-factor weighted blend: fundamental (20–23%), ML (18–20%), regime (15–17%), RS (12–15%), risk (12–13%), sentiment (12–13%), analyst (10%) | 0 – 1 |
-| **Fundamental Score** | Fama-French-style 8-factor cross-sectional rank: earnings yield, book yield, ROE, operating margin, FCF yield, EPS growth, D/E (inverse), current ratio | 0 – 1 |
-| **Regime Score** | HMM bull/bear state probability + VIX signal + yield curve slope | 0 – 1 |
-| **RS Score** | Sector-relative strength: stock return vs sector ETF over 13/26/52 weeks (weighted) | 0 – 1 |
-| **Risk Score** | Cross-sectional Sharpe rank; capped at 0.30 if beta > 2 or max drawdown < −30% | 0 – 1 |
-| **Sentiment** | FinBERT news sentiment normalised from [−1, +1] to [0, 1] | 0 – 1 |
-| **ML Up Probability** | HistGBM probability of a 20-day forward price increase, trained on 252-day rolling window | 0 – 100% |
-| **Model Confidence** | Decisiveness of the ML call — distance from a 50/50 split | 50 – 100% |
+| Metric | What it measures | Range | Interpretation |
+|--------|-----------------|-------|----------------|
+| **Combined Score** | 7-factor weighted blend: fundamental (20–23%), ML (18–20%), regime (15–17%), RS (12–15%), risk (12–13%), sentiment (12–13%), analyst (10%) | 0 – 1 | ≥ 0.65 → BUY · 0.45–0.64 → HOLD · < 0.45 → AVOID |
+| **Fundamental Score** | Fama-French-style 8-factor cross-sectional rank: earnings yield, book yield, ROE, operating margin, FCF yield, EPS growth, D/E (inverse), current ratio | 0 – 1 | ≥ 0.67 strong · 0.33–0.66 moderate · < 0.33 weak |
+| **Regime Score** | HMM bull/bear state probability + VIX signal + yield curve slope | 0 – 1 | > 0.70 favourable · 0.40–0.70 neutral · < 0.40 defensive |
+| **RS Score** | Sector-relative strength: stock return vs sector ETF over 13/26/52 weeks (weighted) | 0 – 1 | > 0.60 outperformer · 0.40–0.60 in-line · < 0.40 laggard |
+| **Risk Score** | Cross-sectional Sharpe rank; capped at 0.30 if beta > 2 or max drawdown < −30% | 0 – 1 | ≥ 0.67 low risk · 0.33–0.66 moderate · < 0.33 high risk |
+| **Sentiment** | FinBERT news sentiment normalised from [−1, +1] to [0, 1] | 0 – 1 | > 0.60 bullish · 0.40–0.60 neutral · < 0.40 bearish |
+| **ML Up Probability** | HistGBM probability of a 20-day forward price increase, trained on 252-day rolling window | 0 – 100% | > 65% strong up · 35–65% uncertain · < 35% strong down |
+| **Model Confidence** | Decisiveness of the ML call — distance from a 50/50 split | 50 – 100% | ≥ 70% high · 60–69% moderate · < 60% low |
 
 *This report is generated automatically. Not financial advice.*

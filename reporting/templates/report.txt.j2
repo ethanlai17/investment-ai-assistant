@@ -11,10 +11,22 @@ TICKER ANALYSIS
 {% for rec in recommendations %}
 {{ rec.ticker }} — {{ rec.signal.value }}
 {{ "-" * 30 }}
-Combined Score:      {{ "%.3f" | format(rec.combined_score) }}
-Sentiment:           {{ "%.3f" | format(rec.sentiment_score) }}
-ML Up Probability:   {{ "%.1f" | format(rec.ml_up_probability * 100) }}%
-Model Confidence:    {{ "%.1f" | format(rec.confidence * 100) }}%
+Combined Score:      {{ "%.3f" | format(rec.combined_score) }} — {% if rec.combined_score >= 0.65 %}BUY signal{% elif rec.combined_score >= 0.45 %}HOLD signal{% else %}AVOID signal{% endif %}
+
+Fundamental Score:   {{ "%.3f" | format(rec.fundamental_score) }} — {% if rec.fundamental_score >= 0.67 %}strong value/quality{% elif rec.fundamental_score >= 0.33 %}moderate{% else %}weak fundamentals{% endif %}
+
+Regime Score:        {{ "%.3f" | format(rec.regime_score) }} — {% if rec.regime_score > 0.70 %}favourable macro{% elif rec.regime_score < 0.40 %}defensive conditions{% else %}neutral macro{% endif %}
+
+RS Score:            {{ "%.3f" | format(rec.rs_score) }} — {% if rec.rs_score > 0.60 %}sector outperformer{% elif rec.rs_score < 0.40 %}sector laggard{% else %}in-line with sector{% endif %}
+
+Risk Score:          {{ "%.3f" | format(rec.risk_score) }} — {% if rec.risk_score >= 0.67 %}low risk{% elif rec.risk_score >= 0.33 %}moderate risk{% else %}high risk{% endif %}
+
+Sentiment:           {{ "%.3f" | format(rec.sentiment_score) }} — {% if rec.sentiment_score > 0.60 %}bullish{% elif rec.sentiment_score >= 0.40 %}neutral{% else %}bearish{% endif %}
+
+ML Up Probability:   {{ "%.1f" | format(rec.ml_up_probability * 100) }}% — {% if rec.ml_up_probability > 0.65 %}strong up signal{% elif rec.ml_up_probability < 0.35 %}strong down signal{% else %}uncertain{% endif %}
+
+Model Confidence:    {{ "%.1f" | format(rec.confidence * 100) }}% — {% if rec.confidence >= 0.70 %}high{% elif rec.confidence >= 0.60 %}moderate{% else %}low{% endif %}
+
 Current Price:       ${{ "%.2f" | format(rec.current_price) }} ({{ "%+.2f" | format(rec.price_change_pct) }}%)
 {% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %}
 Analyst Consensus:   {{ rec.analyst_data.consensus }} — ${{ "%.2f" | format(rec.analyst_data.price_target) }} avg ({{ rec.analyst_data.analyst_count }} analysts, {{ rec.analyst_data.source }})
@@ -53,16 +65,32 @@ NOTES
 METRIC GUIDE
 {{ "=" * 50 }}
 Combined Score (0–1)
-  Weighted blend of sentiment, ML prediction, and analyst consensus.
+  7-factor weighted blend: fundamental, ML, regime, RS, risk, sentiment, analyst.
   >= 0.65 BUY  |  0.45–0.64 HOLD  |  < 0.45 AVOID
+
+Fundamental Score (0–1)
+  Fama-French-style 8-factor rank: value, quality, growth, safety.
+  >= 0.67 strong  |  0.33–0.66 moderate  |  < 0.33 weak
+
+Regime Score (0–1)
+  HMM bull/bear state probability + VIX signal + yield curve slope.
+  > 0.70 favourable  |  0.40–0.70 neutral  |  < 0.40 defensive
+
+RS Score (0–1)
+  Sector-relative strength over 13/26/52 weeks.
+  > 0.60 outperformer  |  0.40–0.60 in-line  |  < 0.40 laggard
+
+Risk Score (0–1)
+  Cross-sectional Sharpe rank; capped if high beta or deep drawdown.
+  >= 0.67 low risk  |  0.33–0.66 moderate  |  < 0.33 high risk
 
 Sentiment (0–1)
   FinBERT news sentiment normalised from [-1, +1].
   > 0.60 bullish  |  0.40–0.60 neutral  |  < 0.40 bearish
 
 ML Up Probability (0–100%)
-  RandomForest probability of a next-day price increase.
-  > 65% or < 35% strong signal  |  35–65% uncertain
+  HistGBM probability of a 20-day forward price increase.
+  > 65% strong up  |  35–65% uncertain  |  < 35% strong down
 
 Model Confidence (50–100%)
   Decisiveness of the ML call — distance from a 50/50 split.
