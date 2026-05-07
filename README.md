@@ -54,7 +54,7 @@ Create a `.env` file in the project root:
 ### 4. Run immediately (test)
 
 ```bash
-python main.py --run-now
+./run.sh --run-now
 ```
 
 Output is saved to `outputs/YYYY-MM-DD.md` and `.txt`. An email is also sent if SMTP is configured.
@@ -62,18 +62,30 @@ Output is saved to `outputs/YYYY-MM-DD.md` and `.txt`. An email is also sent if 
 ### 5. Start the scheduler
 
 ```bash
-python main.py
+nohup ./run.sh >> logs/scheduler.log 2>&1 &
 ```
 
-Runs daily at `SCHEDULE_HOUR:SCHEDULE_MINUTE` in `SCHEDULE_TIMEZONE` (default: 09:30 Europe/London).
+Runs daily at `SCHEDULE_HOUR:SCHEDULE_MINUTE` in `SCHEDULE_TIMEZONE` (default: 09:30 Europe/London). Survives terminal close.
+
+To check the scheduler is alive:
+
+```bash
+pgrep -fl "python -B main.py"
+```
+
+To stop the scheduler:
+
+```bash
+pkill -f "python -B main.py"
+```
 
 ## Configuration reference
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `TICKERS` | *(required)* | Comma-separated US tickers to analyse |
-| `PRICE_LOOKBACK_DAYS` | `200` | Historical OHLCV window (calendar days) |
-| `TRAINING_WINDOW_DAYS` | `90` | Rolling window for ML model training |
+| `PRICE_LOOKBACK_DAYS` | `500` | Historical OHLCV window (calendar days) |
+| `TRAINING_WINDOW_DAYS` | `252` | Rolling window for ML model training |
 | `NEWS_LOOKBACK_DAYS` | `1` | Days of news to fetch |
 | `SCHEDULE_HOUR` | `9` | Hour to run (24h) |
 | `SCHEDULE_MINUTE` | `30` | Minute to run |
