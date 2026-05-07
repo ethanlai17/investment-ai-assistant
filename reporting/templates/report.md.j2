@@ -6,6 +6,19 @@
 
 ---
 
+## Top Picks Today
+
+{% if top_picks %}
+{% for rec in top_picks %}
+{{ loop.index }}. **{{ rec.ticker }}** — Score: {{ "%.3f" | format(rec.combined_score) }}{% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %} | Analyst: {{ rec.analyst_data.consensus }}{% endif %}
+
+{% endfor %}
+{% else %}
+No tickers met the BUY threshold today.
+{% endif %}
+
+---
+
 ## Ticker Analysis
 
 {% for rec in recommendations %}
@@ -40,19 +53,6 @@
 {% endif %}
 
 {% endfor %}
-
----
-
-## Top Picks Today
-
-{% if top_picks %}
-{% for rec in top_picks %}
-{{ loop.index }}. **{{ rec.ticker }}** — Score: {{ "%.3f" | format(rec.combined_score) }}{% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %} | Analyst: {{ rec.analyst_data.consensus }}{% endif %}
-
-{% endfor %}
-{% else %}
-No tickers met the BUY threshold today.
-{% endif %}
 
 ---
 
