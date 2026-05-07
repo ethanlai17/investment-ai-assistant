@@ -217,8 +217,7 @@ class Orchestrator:
 
         insights = self._report_gen.generate_ticker_insights(ranked, regime, ticker_sector)
         for rec in report_data.recommendations:
-            existing = rec.ticker_insight  # preserve high-risk prefix if set
-            rec.ticker_insight = existing + insights.get(rec.ticker, "")
+            rec.ticker_insight = insights.get(rec.ticker, "")
 
         report_data.market_summary = self._report_gen.generate_market_narrative(report_data, regime)
 

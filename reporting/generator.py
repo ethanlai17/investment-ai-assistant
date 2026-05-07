@@ -69,10 +69,11 @@ class ReportGenerator:
 
         prompt = (
             f"{regime_ctx}"
-            "You are a concise financial analyst. For each ticker below, write exactly ONE sentence "
-            "summarising the key investment rationale based on all provided signals. "
-            "Lead with the dominant factor (fundamental quality, macro regime, sector strength, or risk). "
-            "Be specific and factual. For HIGH_RISK tickers, mention the risk explicitly. "
+            "You are explaining stocks to someone with no financial background. "
+            "For each ticker below, write exactly ONE plain-English sentence that: "
+            "(1) briefly describes what the stock has been doing recently (e.g. rising, falling, or flat), and "
+            "(2) states clearly whether to hold, buy, or avoid it and why in everyday language. "
+            "No jargon, no technical terms, no metric names. Write as if texting a friend. "
             "Return ONLY a JSON object with ticker symbols as keys and one-sentence insights as values.\n\n"
             f"Ticker data:\n{json.dumps(ticker_data, indent=2)}"
         )
@@ -104,51 +105,37 @@ class ReportGenerator:
         report_data: ReportData,
         regime: RegimeState | None = None,
     ) -> str:
-        regime_block = ""
-        if regime:
-            regime_block = (
-                f"MACRO REGIME: {regime.current_state.upper()} "
-                f"(bull_prob={regime.bull_probability:.2f}, "
-                f"VIX_signal={regime.vix_signal:.2f} [1=calm/0=fear], "
-                f"yield_curve_signal={regime.yield_curve_signal:.2f} [1=normal/0=inverted])\n\n"
-            )
+        market_mood = "positive" if (regime and regime.bull_probability >= 0.6) else "cautious"
+        market_calm = "calm" if (regime and regime.vix_signal >= 0.6) else "volatile"
 
         recs_summary = []
         for rec in report_data.recommendations:
-            analyst_str = "No analyst data"
+            price_dir = "up" if rec.price_change_pct > 0 else "down"
+            analyst_str = ""
             if rec.analyst_data and rec.analyst_data.consensus != "Unknown":
-                analyst_str = (
-                    f"Analyst: {rec.analyst_data.consensus}, "
-                    f"target ${rec.analyst_data.price_target:.2f}"
-                )
-            risk_flag = " [HIGH RISK]" if rec.risk_metrics and rec.risk_metrics.is_high_risk else ""
+                analyst_str = f", experts say {rec.analyst_data.consensus}"
+            risky = " (risky)" if rec.risk_metrics and rec.risk_metrics.is_high_risk else ""
+            headline = rec.key_news[0] if rec.key_news else ""
             recs_summary.append(
-                f"{rec.ticker}{risk_flag}: {rec.signal.value}, "
-                f"fundamental={rec.fundamental_score:.2f}, "
-                f"regime={rec.regime_score:.2f}, "
-                f"rs={rec.rs_score:.2f}, "
-                f"risk={rec.risk_score:.2f}, "
-                f"sentiment={rec.sentiment_score:.2f}, "
-                f"ML_up={rec.ml_up_probability:.2f}, "
-                f"combined={rec.combined_score:.2f}. "
-                f"{analyst_str}. "
-                f"Top headline: {rec.key_news[0] if rec.key_news else 'none'}"
+                f"{rec.ticker}{risky}: signal={rec.signal.value}, "
+                f"price {price_dir} {abs(rec.price_change_pct):.1f}% today, "
+                f"news mood={'positive' if rec.sentiment_score > 0.6 else 'mixed' if rec.sentiment_score >= 0.4 else 'negative'}, "
+                f"AI predicts {'likely up' if rec.ml_up_probability > 0.65 else 'likely down' if rec.ml_up_probability < 0.35 else 'uncertain'} in 3-4 weeks"
+                f"{analyst_str}. Latest news: {headline}"
             )
 
-        top_picks_str = ", ".join(r.ticker for r in report_data.top_picks) or "None"
+        top_picks_str = ", ".join(r.ticker for r in report_data.top_picks) or "none"
 
         prompt = (
-            f"You are a senior equity analyst writing a daily morning briefing for {report_data.date}.\n\n"
-            f"{regime_block}"
-            "Write 3–5 concise paragraphs covering:\n"
-            "1. The current macro regime and what it means for equity positioning.\n"
-            "2. Sector rotation observations — which sectors show relative strength.\n"
-            "3. Top fundamental picks — stocks with strong value/quality/growth scores.\n"
-            "4. Risk warnings — flag any high-beta or high-drawdown names.\n"
-            "5. Overall portfolio bias (bullish/neutral/defensive) and key risks to watch.\n\n"
-            "Connect themes across tickers. Be direct and specific — no filler phrases.\n\n"
-            f"Top picks today: {top_picks_str}\n\n"
-            "Ticker signals:\n" + "\n".join(recs_summary)
+            f"You are explaining today's stock market ({report_data.date}) to someone with no financial background.\n\n"
+            f"Market conditions today: {market_mood} overall, volatility is {market_calm}.\n"
+            f"Stocks with a BUY signal today: {top_picks_str}.\n\n"
+            "Ticker data:\n" + "\n".join(recs_summary) + "\n\n"
+            "Write exactly 2 short paragraphs:\n"
+            "1. What the overall market feels like today and whether it is a good or cautious time to invest — in plain everyday language.\n"
+            "2. Highlight 2-3 notable stocks: which ones are doing well, which to be careful about, and why — no numbers, no codes, just simple observations.\n\n"
+            "Rules: no jargon, no technical terms, no metric names, no score numbers. "
+            "Write as if explaining to a curious friend over coffee. Keep it short and clear."
         )
 
         try:
@@ -159,7 +146,7 @@ class ReportGenerator:
                 messages=[{"role": "user", "content": prompt}],
             )
             msg = response.choices[0].message
-            narrative = (msg.content or getattr(msg, "reasoning_content", "") or "").strip()
+            narrative = (msg.content or "").strip()
             logger.debug("Pro market narrative generated")
             return narrative or "Market narrative unavailable."
         except Exception as exc:

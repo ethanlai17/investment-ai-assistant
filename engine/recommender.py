@@ -92,10 +92,6 @@ def recommend(
     )
     signal = _compute_signal(combined_score, prediction.confidence, risk_metrics)
 
-    ticker_insight = ""
-    if risk_metrics and risk_metrics.is_high_risk:
-        ticker_insight = "[HIGH RISK: elevated drawdown or beta — capped at HOLD] "
-
     return Recommendation(
         ticker=ticker,
         signal=signal,
@@ -107,7 +103,7 @@ def recommend(
         confidence=round(prediction.confidence, 4),
         key_news=sentiment.top_headlines,
         key_news_urls=sentiment.top_news_urls,
-        ticker_insight=ticker_insight,
+        ticker_insight="",
         current_price=round(current_price, 2),
         price_change_pct=round(price_change_pct, 2),
         fundamental_score=round(fundamental_score, 4),
