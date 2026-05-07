@@ -1,8 +1,10 @@
 # Investment AI Assistant
 
-A production-ready AI-powered daily investment report system for a predefined list of US stock tickers. Implements institutional-grade multi-factor analysis inspired by Fama-French factor models, Hidden Markov Model regime detection, and sector-relative strength used by quant hedge funds.
+A production-ready AI-powered investment report system with two modes: a **daily report** for a predefined watchlist of US tickers, and an **S&P 500 scanner** that screens all 503 constituents to surface the top 5 BUY signals. Implements institutional-grade multi-factor analysis inspired by Fama-French factor models, Hidden Markov Model regime detection, and sector-relative strength used by quant hedge funds.
 
 ## What it does
+
+### Daily watchlist report (`--run-now`)
 
 1. **Ingests** daily financial news from Yahoo Finance RSS (yfinance fallback)
 2. **Fetches** analyst consensus and price targets from TipRanks (yfinance fallback)
@@ -17,6 +19,16 @@ A production-ready AI-powered daily investment report system for a predefined li
 11. **Ranks** tickers with a 7-factor combined score weighted for long-term investing
 12. **Generates** a report with per-ticker insights (DeepSeek Flash) and a macro-led market narrative (DeepSeek Pro)
 13. **Emails** the report daily at 9:30 AM UK time to your configured address
+
+### S&P 500 scanner (`--scan`)
+
+Screens all 503 S&P 500 constituents using a two-stage pre-filter, runs the full pipeline on the top 50 candidates, and returns the top 5 BUY signals ranked by combined score.
+
+**Stage 1 — Momentum screen (503 → 150):** Batch-downloads 1 year of price data; requires positive 6-month AND 12-month returns; ranks by combined 6m/12m relative strength.
+
+**Stage 2 — Fundamental screen (150 → 50):** Fetches ROE (profitability/ROIC), PEG ratio (valuation vs growth), and quarterly earnings growth per ticker; cross-sectionally ranks and scores (earnings growth 40%, ROE 30%, PEG inverted 30%).
+
+The top 50 candidates then go through the full 16-step pipeline above. Output is saved to `outputs/YYYY-MM-DD-sp500-scan.{md,txt}` and emailed with subject "S&P 500 Top 5 Picks — YYYY-MM-DD".
 
 ## Setup
 
@@ -54,10 +66,13 @@ Create a `.env` file in the project root:
 ### 4. Run immediately (test)
 
 ```bash
-./run.sh --run-now
+./run.sh --run-now       # daily watchlist report
+./run.sh --scan          # S&P 500 top 5 BUY signal scan
 ```
 
-Output is saved to `outputs/YYYY-MM-DD.md` and `.txt`. An email is also sent if SMTP is configured.
+`--run-now` saves to `outputs/YYYY-MM-DD.{md,txt}` and emails the report. After it completes, you can enter additional tickers interactively.
+
+`--scan` pre-filters all 503 S&P 500 constituents and runs the full pipeline on the top 50 candidates. Saves to `outputs/YYYY-MM-DD-sp500-scan.{md,txt}` and emails with subject "S&P 500 Top 5 Picks — YYYY-MM-DD". Typical runtime: 3–5 minutes.
 
 ### 5. Start the scheduler
 
@@ -97,6 +112,8 @@ pkill -f "python -B main.py"
 ## Architecture
 
 ```
+Wikipedia S&P 500  ──► SP500Screener ──► top 50 candidates   (--scan only)
+
 Yahoo Finance RSS  ──► NewsFetcher
 yfinance news      ──► (fallback)            ┐
 yfinance OHLCV     ──► PriceFetcher          │
@@ -154,30 +171,30 @@ High-risk = max drawdown < −30% OR beta > 2.0 in the past 252 days.
 
 ## Output format
 
+**Daily report** (`outputs/YYYY-MM-DD.{md,txt}`):
+
 ```
 # Investment Report — YYYY-MM-DD
 
 ## Market Summary
-[3–5 paragraph narrative: macro regime → sector rotation → top fundamental picks → risk warnings]
+[2-paragraph narrative: macro regime + 2–3 notable stocks]
+
+## Top Picks Today
+1. TICKER — Score: 0.712 | Analyst: Strong Buy
+...
 
 ## Ticker Analysis
 ### TICKER — BUY
-| Combined Score | 0.712 |
-| Fundamental Score | 0.68 |
-| Regime Score | 0.93 |
+| Combined Score | 0.712 — BUY signal |
+| Fundamental Score | 0.68 — strong value/quality |
 ...
-Key Insight: [DeepSeek one-liner citing dominant factor]
+Key Insight: [DeepSeek one-liner]
 Key News: ...
 
-## Top Picks Today
-1. TICKER — Score: 0.712
-
-## Notes
-[model info and regime context]
-
-## Metric Guide
-[full scoring legend]
+## Notes / Metric Guide
 ```
+
+**S&P 500 scan** (`outputs/YYYY-MM-DD-sp500-scan.{md,txt}`): same structure, title reads "S&P 500 Top 5 Picks — YYYY-MM-DD", contains only the top 5 BUY signals.
 
 ## Limitations
 
