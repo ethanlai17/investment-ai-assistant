@@ -63,36 +63,18 @@ Create a `.env` file in the project root:
 
 **Gmail App Password:** Enable 2FA on your Google account → Security → App passwords → create one for "Mail".
 
-### 4. Run immediately (test)
+### 4. Commands
 
-```bash
-./run.sh --run-now       # daily watchlist report
-./run.sh --scan          # S&P 500 top 5 BUY signal scan
-```
-
-`--run-now` saves to `outputs/YYYY-MM-DD.{md,txt}` and emails the report. After it completes, you can enter additional tickers interactively.
-
-`--scan` pre-filters all 503 S&P 500 constituents and runs the full pipeline on the top 50 candidates. Saves to `outputs/YYYY-MM-DD-sp500-scan.{md,txt}` and emails with subject "S&P 500 Top 5 Picks — YYYY-MM-DD". Typical runtime: 3–5 minutes.
-
-### 5. Start the scheduler
-
-```bash
-nohup ./run.sh >> logs/scheduler.log 2>&1 &
-```
-
-Runs daily at `SCHEDULE_HOUR:SCHEDULE_MINUTE` in `SCHEDULE_TIMEZONE` (default: 09:30 Europe/London). Survives terminal close.
-
-To check the scheduler is alive:
-
-```bash
-pgrep -fl "python -B main.py"
-```
-
-To stop the scheduler:
-
-```bash
-pkill -f "python -B main.py"
-```
+| Command | Description |
+|---------|-------------|
+| `./run.sh --run-now` | Run daily watchlist report now |
+| `./run.sh --scan` | Run S&P 500 top 5 BUY signal scan (~3–5 min) |
+| `LOG_LEVEL=DEBUG ./run.sh --run-now` | Run with debug logging |
+| `launchctl load ~/Library/LaunchAgents/com.ethanlai.investment-assistant.plist` | Enable daily scheduler at 09:30 (survives reboots) |
+| `launchctl unload ~/Library/LaunchAgents/com.ethanlai.investment-assistant.plist` | Disable scheduler |
+| `launchctl start com.ethanlai.investment-assistant` | Trigger scheduler run immediately |
+| `launchctl list \| grep investment-assistant` | Check scheduler status (exit code 0 = last run OK) |
+| `tail -f logs/launchd.log` | Stream scheduler logs |
 
 ## Configuration reference
 

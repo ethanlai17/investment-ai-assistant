@@ -56,6 +56,8 @@ def run_scheduled(config: Config) -> None:
             minute=config.schedule_minute,
             timezone=config.schedule_timezone,
         ),
+        misfire_grace_time=3600,
+        coalesce=True,
     )
     logger.info(
         f"Scheduler started — daily at {config.schedule_hour:02d}:{config.schedule_minute:02d} {config.schedule_timezone}"
