@@ -73,7 +73,7 @@ Create a `.env` file in the project root:
 | `launchctl load ~/Library/LaunchAgents/com.ethanlai.investment-assistant.plist` | Enable daily scheduler at 09:30 (survives reboots) |
 | `launchctl unload ~/Library/LaunchAgents/com.ethanlai.investment-assistant.plist` | Disable scheduler |
 | `launchctl start com.ethanlai.investment-assistant` | Trigger scheduler run immediately |
-| `launchctl list &#124; grep investment-assistant` | Check scheduler status (exit code 0 = last run OK) |
+| `launchctl print gui/$(id -u)/com.ethanlai.investment-assistant` | Check scheduler status (exit code 0 = last run OK) |
 | `tail -f logs/launchd.log` | Stream scheduler logs |
 
 ## Configuration reference
