@@ -9,6 +9,7 @@ from ingestion.analyst_fetcher import AnalystFetcher
 from ingestion.fundamental_fetcher import FundamentalFetcher
 from ingestion.macro_fetcher import MacroFetcher
 from ingestion.sector_etf_fetcher import SectorETFFetcher
+from ingestion.reference_builder import ReferenceDistributionBuilder
 from processing.deduplicator import process as process_news
 from analysis.sentiment import SentimentAnalyser
 from analysis.fundamental import FundamentalScorer
@@ -43,6 +44,7 @@ class Orchestrator:
             pro_model=config.pro_model,
             api_key=config.deepseek_api_key,
         )
+        self._ref_builder = ReferenceDistributionBuilder()
         self._formatter = ReportFormatter(config.outputs_dir)
         self._mailer = EmailSender(
             smtp_host=config.smtp_host,
@@ -73,6 +75,14 @@ class Orchestrator:
         today = date.today().isoformat()
         tickers = tickers or self._config.tickers
         logger.info(f"Pipeline start — {today} — tickers: {tickers}")
+
+        # Step 0: Load S&P 500 reference distributions (cached per day)
+        logger.info("Step 0: Loading S&P 500 reference distributions")
+        ref = None
+        try:
+            ref = self._ref_builder.build(self._config.outputs_dir)
+        except Exception as exc:
+            logger.warning(f"Reference distribution build failed — {exc}. Falling back to in-batch ranking.")
 
         # Step 1: Fetch news
         logger.info("Step 1/16: Fetching news")
@@ -128,7 +138,7 @@ class Orchestrator:
         logger.info("Step 11/16: Computing sector-relative strength")
         price_data_available = {t: df for t, df in price_data.items() if df is not None}
         rs_data = self._rs_calculator.compute_all(
-            price_data_available, ticker_etf, ticker_sector, etf_prices
+            price_data_available, ticker_etf, ticker_sector, etf_prices, reference=ref
         )
 
         # Step 12: Risk metrics
@@ -138,7 +148,8 @@ class Orchestrator:
         risk_metrics_all = {}
         if spy_returns is not None:
             risk_metrics_all = self._risk_calculator.compute_all(
-                price_data_available, spy_returns, risk_free_rate
+                price_data_available, spy_returns, risk_free_rate,
+                reference_sharpes=ref["sharpes"] if ref is not None else None,
             )
 
         # Step 13: Price prediction

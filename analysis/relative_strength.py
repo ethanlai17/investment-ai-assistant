@@ -6,6 +6,12 @@ from loguru import logger
 from models.types import RelativeStrength
 
 
+def _pct_rank_in_ref(value: float, ref: np.ndarray) -> float:
+    if len(ref) == 0:
+        return 0.5
+    return int(np.searchsorted(ref, value)) / len(ref)
+
+
 def _cumulative_return(price_series: pd.Series, days: int) -> float | None:
     s = price_series.dropna()
     if len(s) < days + 1:
@@ -32,6 +38,7 @@ class RelativeStrengthCalculator:
         ticker_etf: dict[str, str],
         ticker_sector: dict[str, str],
         etf_prices: dict[str, pd.DataFrame],
+        reference: dict[str, np.ndarray] | None = None,
     ) -> dict[str, RelativeStrength]:
         tickers = list(price_data.keys())
         raw_rs: dict[str, dict[str, float | None]] = {}
@@ -56,19 +63,35 @@ class RelativeStrengthCalculator:
             )
             raw_rs[ticker] = {"rs_52w": rs52, "rs_26w": rs26, "rs_13w": rs13}
 
-        # Cross-sectional percentile rank for each lookback window
-        def _rank(key: str) -> dict[str, float]:
-            vals = {t: raw_rs[t][key] for t in tickers if raw_rs[t][key] is not None}
-            if not vals:
-                return {t: 0.5 for t in tickers}
-            arr = np.array(list(vals.values()))
-            ranks = (rankdata(arr) - 1) / max(len(arr) - 1, 1)
-            rank_map = dict(zip(vals.keys(), ranks))
-            return {t: float(rank_map.get(t, 0.5)) for t in tickers}
+        if reference is not None:
+            # Rank each ticker's raw RS ratio against the S&P 500 reference distribution
+            # so both pipelines produce identical scores for the same stock.
+            rank52 = {
+                t: _pct_rank_in_ref(raw_rs[t]["rs_52w"] or 1.0, reference["rs_52w"])
+                for t in tickers
+            }
+            rank26 = {
+                t: _pct_rank_in_ref(raw_rs[t]["rs_26w"] or 1.0, reference["rs_26w"])
+                for t in tickers
+            }
+            rank13 = {
+                t: _pct_rank_in_ref(raw_rs[t]["rs_13w"] or 1.0, reference["rs_13w"])
+                for t in tickers
+            }
+        else:
+            # Fallback: cross-sectional rank within current batch only
+            def _rank(key: str) -> dict[str, float]:
+                vals = {t: raw_rs[t][key] for t in tickers if raw_rs[t][key] is not None}
+                if not vals:
+                    return {t: 0.5 for t in tickers}
+                arr = np.array(list(vals.values()))
+                ranks = (rankdata(arr) - 1) / max(len(arr) - 1, 1)
+                rank_map = dict(zip(vals.keys(), ranks))
+                return {t: float(rank_map.get(t, 0.5)) for t in tickers}
 
-        rank52 = _rank("rs_52w")
-        rank26 = _rank("rs_26w")
-        rank13 = _rank("rs_13w")
+            rank52 = _rank("rs_52w")
+            rank26 = _rank("rs_26w")
+            rank13 = _rank("rs_13w")
 
         results: dict[str, RelativeStrength] = {}
         for ticker in tickers:

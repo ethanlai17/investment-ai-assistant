@@ -6,6 +6,12 @@ from loguru import logger
 from models.types import RiskMetrics
 
 
+def _pct_rank_in_ref(value: float, ref: np.ndarray) -> float:
+    if len(ref) == 0:
+        return 0.5
+    return int(np.searchsorted(ref, value)) / len(ref)
+
+
 def _max_drawdown(prices: pd.Series) -> float:
     peak = prices.cummax()
     drawdown = (prices - peak) / peak
@@ -31,6 +37,7 @@ class RiskCalculator:
         price_data: dict[str, pd.DataFrame],
         spy_returns: pd.Series,
         risk_free_rate: float,
+        reference_sharpes: np.ndarray | None = None,
     ) -> dict[str, RiskMetrics]:
         tickers = list(price_data.keys())
         raw: dict[str, dict] = {}
@@ -56,13 +63,19 @@ class RiskCalculator:
                 logger.warning(f"{ticker}: risk calc failed — {exc}")
                 raw[ticker] = {"sharpe": 0.0, "mdd": -0.5, "beta": 1.0, "vol": 0.3}
 
-        # Cross-sectional Sharpe percentile → risk_score
-        sharpes = np.array([raw[t]["sharpe"] for t in tickers])
-        if len(tickers) > 1:
-            ranks = (rankdata(sharpes) - 1) / max(len(tickers) - 1, 1)
+        if reference_sharpes is not None and len(reference_sharpes) > 0:
+            # Rank each ticker's Sharpe against the S&P 500 reference distribution
+            sharpe_rank = {
+                t: _pct_rank_in_ref(raw[t]["sharpe"], reference_sharpes) for t in tickers
+            }
         else:
-            ranks = np.array([0.5])
-        sharpe_rank = dict(zip(tickers, ranks))
+            # Fallback: cross-sectional rank within current batch only
+            sharpes = np.array([raw[t]["sharpe"] for t in tickers])
+            if len(tickers) > 1:
+                ranks = (rankdata(sharpes) - 1) / max(len(tickers) - 1, 1)
+            else:
+                ranks = np.array([0.5])
+            sharpe_rank = dict(zip(tickers, ranks))
 
         results: dict[str, RiskMetrics] = {}
         for ticker in tickers:
