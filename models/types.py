@@ -120,13 +120,27 @@ class RelativeStrength:
 
 
 @dataclass
+class FactorExposure:
+    ticker: str
+    alpha: float          # annualised raw alpha
+    beta_mkt: float
+    beta_smb: float
+    beta_hml: float
+    beta_umd: float
+    r_squared: float
+    carhart_alpha: float  # cross-sectional rank [0, 1]
+
+
+@dataclass
 class RiskMetrics:
     ticker: str
     sharpe_ratio: float
     max_drawdown: float
     beta: float
     annualised_vol: float
-    risk_score: float  # [0, 1]
+    cvar_95: float        # daily CVaR at 95% (negative)
+    sortino_ratio: float
+    risk_score: float     # [0, 1]
     is_high_risk: bool
 
 
@@ -150,6 +164,8 @@ class Recommendation:
     rs_score: float = 0.0
     risk_score: float = 0.0
     risk_metrics: RiskMetrics | None = None
+    carhart_alpha: float = 0.0
+    pt_upside: float = 0.0
 
 
 @dataclass

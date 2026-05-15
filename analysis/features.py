@@ -10,6 +10,7 @@ _FEATURE_COLS = [
     "bb_pct", "volume_ratio", "mom_5", "mom_20",
     "daily_return", "sentiment_score",
     "fundamental_score", "regime_score", "rs_score", "risk_score",
+    "high_52w_ratio",
 ]
 
 
@@ -50,6 +51,9 @@ def compute_features(
     df["regime_score"] = regime_score
     df["rs_score"] = rs_score
     df["risk_score"] = risk_score
+
+    high_252 = close.rolling(252, min_periods=63).max()
+    df["high_52w_ratio"] = np.where(high_252 > 0, close / high_252, 1.0)
 
     return df
 

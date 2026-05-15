@@ -47,7 +47,8 @@ class ReportGenerator:
             if rec.risk_metrics:
                 rm = rec.risk_metrics
                 risk_str = (
-                    f"Sharpe={rm.sharpe_ratio:.2f}, MaxDD={rm.max_drawdown:.1%}, "
+                    f"Sharpe={rm.sharpe_ratio:.2f}, Sortino={rm.sortino_ratio:.2f}, "
+                    f"CVaR95={rm.cvar_95:.2%}, MaxDD={rm.max_drawdown:.1%}, "
                     f"Beta={rm.beta:.2f}, HighRisk={rm.is_high_risk}"
                 )
             sector = (ticker_sector or {}).get(rec.ticker, "Unknown")
@@ -60,6 +61,8 @@ class ReportGenerator:
                 "regime_score": rec.regime_score,
                 "rs_score": rec.rs_score,
                 "risk_score": rec.risk_score,
+                "carhart_alpha": rec.carhart_alpha,
+                "pt_upside": rec.pt_upside,
                 "sentiment_score": rec.sentiment_score,
                 "ml_up_probability": rec.ml_up_probability,
                 "analyst_consensus": analyst_str,

@@ -31,7 +31,7 @@ Regime Score:        {{ "%.3f" | format(rec.regime_score) }} — {% if rec.regim
 
 RS Score:            {{ "%.3f" | format(rec.rs_score) }} — {% if rec.rs_score > 0.60 %}sector outperformer{% elif rec.rs_score < 0.40 %}sector laggard{% else %}in-line with sector{% endif %}
 
-Risk Score:          {{ "%.3f" | format(rec.risk_score) }} — {% if rec.risk_score >= 0.67 %}low risk{% elif rec.risk_score >= 0.33 %}moderate risk{% else %}high risk{% endif %}
+Risk Score:          {{ "%.3f" | format(rec.risk_score) }} — {% if rec.risk_metrics and rec.risk_metrics.is_high_risk %}high risk (CVaR/beta breach){% elif rec.risk_score >= 0.67 %}low risk{% elif rec.risk_score >= 0.33 %}moderate risk{% else %}high risk{% endif %}{% if rec.risk_metrics %} (Sortino={{ "%.2f" | format(rec.risk_metrics.sortino_ratio) }}, CVaR95={{ "%.2f" | format(rec.risk_metrics.cvar_95 * 100) }}%){% endif %}
 
 Sentiment:           {{ "%.3f" | format(rec.sentiment_score) }} — {% if rec.sentiment_score > 0.60 %}bullish{% elif rec.sentiment_score >= 0.40 %}neutral{% else %}bearish{% endif %}
 

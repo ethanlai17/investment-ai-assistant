@@ -26,6 +26,14 @@ def _analyst_normalized(analyst_data: AnalystData | None) -> float | None:
     return _ANALYST_SCORE_MAP.get(analyst_data.consensus)
 
 
+def _pt_upside_normalized(analyst_data: AnalystData | None, current_price: float) -> float:
+    if analyst_data is None or analyst_data.price_target <= 0 or current_price <= 0:
+        return 0.5
+    raw_upside = (analyst_data.price_target - current_price) / current_price
+    clipped = max(-0.5, min(1.0, raw_upside))
+    return round((clipped + 0.5) / 1.5, 4)
+
+
 def _compute_combined(
     norm_sentiment: float,
     ml_up_probability: float,
@@ -34,24 +42,29 @@ def _compute_combined(
     regime_score: float,
     rs_score: float,
     risk_score: float,
+    carhart_alpha: float,
+    pt_upside: float,
 ) -> float:
     if analyst_norm is not None:
         return (
-            0.20 * fundamental_score
+            0.16 * fundamental_score
             + 0.18 * ml_up_probability
-            + 0.15 * regime_score
-            + 0.12 * rs_score
-            + 0.12 * risk_score
-            + 0.13 * norm_sentiment
-            + 0.10 * analyst_norm
+            + 0.12 * carhart_alpha
+            + 0.12 * regime_score
+            + 0.10 * rs_score
+            + 0.09 * risk_score
+            + 0.10 * norm_sentiment
+            + 0.07 * analyst_norm
+            + 0.06 * pt_upside
         )
     return (
-        0.23 * fundamental_score
-        + 0.20 * ml_up_probability
-        + 0.17 * regime_score
-        + 0.15 * rs_score
-        + 0.13 * risk_score
-        + 0.12 * norm_sentiment
+        0.20 * fundamental_score
+        + 0.22 * ml_up_probability
+        + 0.15 * carhart_alpha
+        + 0.15 * regime_score
+        + 0.12 * rs_score
+        + 0.11 * risk_score
+        + 0.05 * norm_sentiment
     )
 
 
@@ -82,13 +95,16 @@ def recommend(
     rs_score: float = 0.5,
     risk_score: float = 0.5,
     risk_metrics: RiskMetrics | None = None,
+    carhart_alpha: float = 0.5,
 ) -> Recommendation:
     norm_sentiment = _normalize_sentiment(sentiment.avg_score)
     analyst_norm = _analyst_normalized(analyst_data)
     analyst_score = analyst_norm if analyst_norm is not None else 0.0
+    pt_upside = _pt_upside_normalized(analyst_data, current_price)
     combined_score = _compute_combined(
         norm_sentiment, prediction.up_probability, analyst_norm,
         fundamental_score, regime_score, rs_score, risk_score,
+        carhart_alpha, pt_upside,
     )
     signal = _compute_signal(combined_score, prediction.confidence, risk_metrics)
 
@@ -111,6 +127,8 @@ def recommend(
         rs_score=round(rs_score, 4),
         risk_score=round(risk_score, 4),
         risk_metrics=risk_metrics,
+        carhart_alpha=round(carhart_alpha, 4),
+        pt_upside=round(pt_upside, 4),
     )
 
 

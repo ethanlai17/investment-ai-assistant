@@ -16,6 +16,7 @@ from analysis.fundamental import FundamentalScorer
 from analysis.regime import RegimeDetector
 from analysis.relative_strength import RelativeStrengthCalculator
 from analysis.risk_metrics import RiskCalculator
+from analysis.factor_decomposition import FactorDecomposer
 from analysis.predictor import PricePredictor
 from engine.recommender import recommend, rank_recommendations
 from reporting.generator import ReportGenerator
@@ -38,6 +39,7 @@ class Orchestrator:
         self._regime_detector = RegimeDetector()
         self._rs_calculator = RelativeStrengthCalculator()
         self._risk_calculator = RiskCalculator()
+        self._factor_decomposer = FactorDecomposer()
         self._predictor = PricePredictor(config.training_window_days)
         self._report_gen = ReportGenerator(
             flash_model=config.flash_model,
@@ -150,7 +152,19 @@ class Orchestrator:
             risk_metrics_all = self._risk_calculator.compute_all(
                 price_data_available, spy_returns, risk_free_rate,
                 reference_sharpes=ref["sharpes"] if ref is not None else None,
+                reference_sortinos=ref.get("sortinos") if ref is not None else None,
             )
+
+        # Step 12b: Carhart 4-factor decomposition
+        logger.info("Step 12b/16: Running Carhart 4-factor decomposition")
+        factor_exposures: dict = {}
+        try:
+            factor_exposures = self._factor_decomposer.compute_all(
+                price_data_available,
+                lookback_days=self._config.price_lookback_days,
+            )
+        except Exception as exc:
+            logger.warning(f"Factor decomposition failed — {exc}. Skipping.")
 
         # Step 13: Price prediction
         logger.info("Step 13/16: Running price predictions")
@@ -206,6 +220,7 @@ class Orchestrator:
                 rs_score=rs_data[ticker].rs_score if ticker in rs_data else 0.5,
                 risk_score=risk_metrics_all[ticker].risk_score if ticker in risk_metrics_all else 0.5,
                 risk_metrics=risk_metrics_all.get(ticker),
+                carhart_alpha=factor_exposures[ticker].carhart_alpha if ticker in factor_exposures else 0.5,
             )
             recommendations.append(rec)
 
@@ -213,7 +228,9 @@ class Orchestrator:
         top_picks = [r for r in ranked if r.signal.value == "BUY"]
 
         if top_n_buys is not None:
-            top_picks = sorted(top_picks, key=lambda r: r.combined_score, reverse=True)[:top_n_buys]
+            buys = sorted([r for r in recommendations if r.signal.value == "BUY"], key=lambda r: r.combined_score, reverse=True)
+            holds = sorted([r for r in recommendations if r.signal.value == "HOLD"], key=lambda r: r.combined_score, reverse=True)
+            top_picks = (buys + holds)[:top_n_buys]
             ranked = list(top_picks)
 
         # Step 15: Generate report narrative
@@ -229,7 +246,7 @@ class Orchestrator:
 
         scan_note = (
             f"S&P 500 scan: pre-filtered from 503 constituents via momentum + fundamentals. "
-            f"Top {top_n_buys} BUY signals shown, ranked by combined score. "
+            f"Top {top_n_buys} picks shown, ranked by combined score regardless of signal. "
             if top_n_buys is not None else ""
         )
         report_data = ReportData(
@@ -241,13 +258,14 @@ class Orchestrator:
             top_picks=top_picks,
             notes=(
                 f"{scan_note}{regime_note}"
-                "XGBoost trained on 252-day rolling window; target = 20-day forward return. "
+                "XGBoost trained on 252-day rolling window; target = 20-day forward return; 15 features incl. 52w high proximity (George & Hwang). "
                 "Fundamental scoring: Fama-French-style 8-factor cross-sectional rank (value, quality, growth, safety). "
                 "Regime: HMM (2-state) on SPY returns + VIX + yield curve. "
                 "Relative strength: 13/26/52-week rank vs sector ETF. "
-                "Risk: Sharpe/drawdown/beta cross-sectional rank; high-risk stocks capped at HOLD. "
+                "Risk: Sortino/CVaR-weighted score; continuous CVaR penalty; high-risk flag (CVaR < -3% daily or beta > 2.0) caps at HOLD. "
+                "Carhart 4-factor alpha: OLS vs MKT-RF/SMB/HML/UMD (Fama-French daily); cross-sectional rank. "
                 "Sentiment: FinBERT (ProsusAI/finbert, 0.94 F1). "
-                "Analyst data: TipRanks (yfinance fallback). "
+                "Analyst data: TipRanks (yfinance fallback); price-target upside included in composite score. "
                 "Predictions are probabilistic — not financial advice."
             ),
         )

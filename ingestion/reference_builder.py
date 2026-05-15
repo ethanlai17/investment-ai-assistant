@@ -27,7 +27,8 @@ class ReferenceDistributionBuilder:
         if cache_path.exists():
             logger.info("Reference distributions: loading from cache")
             data = np.load(cache_path)
-            return {k: data[k] for k in ("rs_52w", "rs_26w", "rs_13w", "sharpes")}
+            keys = list(data.keys())
+            return {k: data[k] for k in keys}
 
         logger.info("Reference distributions: building from S&P 500 universe (~60s)")
         tickers = self._fetch_sp500_tickers()
@@ -39,7 +40,7 @@ class ReferenceDistributionBuilder:
         close = raw["Close"] if isinstance(raw.columns, pd.MultiIndex) else raw
         spy = close["SPY"].dropna() if "SPY" in close.columns else pd.Series(dtype=float)
 
-        rs_52w, rs_26w, rs_13w, sharpes = [], [], [], []
+        rs_52w, rs_26w, rs_13w, sharpes, sortinos = [], [], [], [], []
         for ticker in tickers:
             if ticker not in close.columns:
                 continue
@@ -58,12 +59,18 @@ class ReferenceDistributionBuilder:
                 ann_vol = float(rets.std() * np.sqrt(252))
                 if ann_vol > 0:
                     sharpes.append((ann_ret - self._RISK_FREE_RATE) / ann_vol)
+                downside = rets[rets < 0]
+                if len(downside) > 1:
+                    dd = float(downside.std() * np.sqrt(252))
+                    if dd > 0:
+                        sortinos.append((ann_ret - self._RISK_FREE_RATE) / dd)
 
         result = {
             "rs_52w": np.sort(np.array(rs_52w, dtype=float)),
             "rs_26w": np.sort(np.array(rs_26w, dtype=float)),
             "rs_13w": np.sort(np.array(rs_13w, dtype=float)),
             "sharpes": np.sort(np.array(sharpes, dtype=float)),
+            "sortinos": np.sort(np.array(sortinos, dtype=float)),
         }
         np.savez(cache_path, **result)
         logger.info(

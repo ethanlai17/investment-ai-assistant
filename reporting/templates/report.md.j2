@@ -10,7 +10,7 @@
 
 {% if top_picks %}
 {% for rec in top_picks %}
-{{ loop.index }}. **{{ rec.ticker }}** — Score: {{ "%.3f" | format(rec.combined_score) }}{% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %} | Analyst: {{ rec.analyst_data.consensus }}{% endif %}
+{{ loop.index }}. **{{ rec.ticker }}** — Signal: **{{ rec.signal.value }}** | Score: {{ "%.3f" | format(rec.combined_score) }}{% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %} | Analyst consensus: {{ rec.analyst_data.consensus }}{% endif %}
 
 {% endfor %}
 {% else %}
@@ -26,17 +26,19 @@ No tickers met the BUY threshold today.
 
 | Metric | Value |
 |--------|-------|
-| Combined Score | {{ "%.3f" | format(rec.combined_score) }} — {% if rec.combined_score >= 0.65 %}BUY signal{% elif rec.combined_score >= 0.45 %}HOLD signal{% else %}AVOID signal{% endif %} |
+| Combined Score | {{ "%.3f" | format(rec.combined_score) }} — {{ rec.signal.value }}{% if rec.risk_metrics and rec.risk_metrics.is_high_risk and rec.combined_score >= 0.65 %} (high-risk cap){% endif %} |
 | Fundamental Score | {{ "%.3f" | format(rec.fundamental_score) }} — {% if rec.fundamental_score >= 0.67 %}strong value/quality{% elif rec.fundamental_score >= 0.33 %}moderate{% else %}weak fundamentals{% endif %} |
 | Regime Score | {{ "%.3f" | format(rec.regime_score) }} — {% if rec.regime_score > 0.70 %}favourable macro{% elif rec.regime_score < 0.40 %}defensive conditions{% else %}neutral macro{% endif %} |
 | RS Score | {{ "%.3f" | format(rec.rs_score) }} — {% if rec.rs_score > 0.60 %}sector outperformer{% elif rec.rs_score < 0.40 %}sector laggard{% else %}in-line with sector{% endif %} |
-| Risk Score | {{ "%.3f" | format(rec.risk_score) }} — {% if rec.risk_score >= 0.67 %}low risk{% elif rec.risk_score >= 0.33 %}moderate risk{% else %}high risk{% endif %} |
+| Risk Score | {{ "%.3f" | format(rec.risk_score) }} — {% if rec.risk_metrics and rec.risk_metrics.is_high_risk %}high risk (CVaR/beta breach){% elif rec.risk_score >= 0.67 %}low risk{% elif rec.risk_score >= 0.33 %}moderate risk{% else %}high risk{% endif %}{% if rec.risk_metrics %} (Sortino={{ "%.2f" | format(rec.risk_metrics.sortino_ratio) }}, CVaR95={{ "%.2f" | format(rec.risk_metrics.cvar_95 * 100) }}%){% endif %} |
+| Carhart Alpha | {{ "%.3f" | format(rec.carhart_alpha) }} — {% if rec.carhart_alpha > 0.60 %}factor-adjusted outperformer{% elif rec.carhart_alpha >= 0.40 %}in-line with factors{% else %}factor-adjusted underperformer{% endif %} |
 | Sentiment | {{ "%.3f" | format(rec.sentiment_score) }} — {% if rec.sentiment_score > 0.60 %}bullish{% elif rec.sentiment_score >= 0.40 %}neutral{% else %}bearish{% endif %} |
 | ML Up Probability | {{ "%.1f" | format(rec.ml_up_probability * 100) }}% — {% if rec.ml_up_probability > 0.65 %}strong up signal{% elif rec.ml_up_probability < 0.35 %}strong down signal{% else %}uncertain{% endif %} |
 | Model Confidence | {{ "%.1f" | format(rec.confidence * 100) }}% — {% if rec.confidence >= 0.70 %}high{% elif rec.confidence >= 0.60 %}moderate{% else %}low{% endif %} |
 | Current Price | ${{ "%.2f" | format(rec.current_price) }} ({{ "%+.2f" | format(rec.price_change_pct) }}%) |
 {% if rec.analyst_data and rec.analyst_data.consensus != "Unknown" %}
 | Analyst Consensus | {{ rec.analyst_data.consensus }} — ${{ "%.2f" | format(rec.analyst_data.price_target) }} avg target ({{ rec.analyst_data.analyst_count }} analysts, {{ rec.analyst_data.source }}) |
+| PT Upside | {{ "%+.1f" | format((rec.pt_upside * 1.5 - 0.5) * 100) }}% implied upside to analyst target — {{ "%.3f" | format(rec.pt_upside) }} normalised |
 {% else %}
 | Analyst Consensus | N/A |
 {% endif %}
@@ -66,13 +68,15 @@ No tickers met the BUY threshold today.
 
 | Metric | What it measures | Range | Interpretation |
 |--------|-----------------|-------|----------------|
-| **Combined Score** | 7-factor weighted blend: fundamental (20–23%), ML (18–20%), regime (15–17%), RS (12–15%), risk (12–13%), sentiment (12–13%), analyst (10%) | 0 – 1 | ≥ 0.65 → BUY · 0.45–0.64 → HOLD · < 0.45 → AVOID |
+| **Combined Score** | 9-factor weighted blend (with analyst): fundamental 16%, ML 18%, Carhart alpha 12%, regime 12%, RS 10%, risk 9%, sentiment 10%, analyst 7%, PT upside 6%. Without analyst: fundamental 20%, ML 22%, alpha 15%, regime 15%, RS 12%, risk 11%, sentiment 5% | 0 – 1 | ≥ 0.65 → BUY · 0.45–0.64 → HOLD · < 0.45 → AVOID |
 | **Fundamental Score** | Fama-French-style 8-factor cross-sectional rank: earnings yield, book yield, ROE, operating margin, FCF yield, EPS growth, D/E (inverse), current ratio | 0 – 1 | ≥ 0.67 strong · 0.33–0.66 moderate · < 0.33 weak |
 | **Regime Score** | HMM bull/bear state probability + VIX signal + yield curve slope | 0 – 1 | > 0.70 favourable · 0.40–0.70 neutral · < 0.40 defensive |
 | **RS Score** | Sector-relative strength: stock return vs sector ETF over 13/26/52 weeks (weighted) | 0 – 1 | > 0.60 outperformer · 0.40–0.60 in-line · < 0.40 laggard |
-| **Risk Score** | Cross-sectional Sharpe rank; capped at 0.30 if beta > 2 or max drawdown < −30% | 0 – 1 | ≥ 0.67 low risk · 0.33–0.66 moderate · < 0.33 high risk |
+| **Risk Score** | Sortino rank (60%) + Sharpe rank (40%) blended cross-sectionally; continuous CVaR penalty applied from −1% to −5% daily tail loss; high-risk flag (CVaR < −5% daily or beta > 2.0) caps signal at HOLD and overrides label to "high risk (CVaR/beta breach)" | 0 – 1 | ≥ 0.67 low risk · 0.33–0.66 moderate · < 0.33 high risk · is_high_risk=True → always "high risk (CVaR/beta breach)" |
+| **Carhart Alpha** | OLS alpha from Carhart 4-factor regression (MKT-RF, SMB, HML, UMD) vs Fama-French daily factors; cross-sectional rank across batch | 0 – 1 | > 0.60 factor-adjusted outperformer · 0.40–0.60 in-line · < 0.40 underperformer |
+| **PT Upside** | Analyst consensus price target implied upside from current price; normalised to [0, 1] | 0 – 1 | > 0.60 meaningful upside · 0.40–0.60 fairly valued · < 0.40 overvalued vs target |
 | **Sentiment** | FinBERT news sentiment normalised from [−1, +1] to [0, 1] | 0 – 1 | > 0.60 bullish · 0.40–0.60 neutral · < 0.40 bearish |
-| **ML Up Probability** | HistGBM probability of a 20-day forward price increase, trained on 252-day rolling window | 0 – 100% | > 65% strong up · 35–65% uncertain · < 35% strong down |
+| **ML Up Probability** | HistGBM probability of a 20-day forward price increase; trained on 252-day rolling window; 15 features including 52-week high proximity (George & Hwang) | 0 – 100% | > 65% strong up · 35–65% uncertain · < 35% strong down |
 | **Model Confidence** | Decisiveness of the ML call — distance from a 50/50 split | 50 – 100% | ≥ 70% high · 60–69% moderate · < 60% low |
 
 *This report is generated automatically. Not financial advice.*
